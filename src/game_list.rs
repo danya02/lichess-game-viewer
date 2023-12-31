@@ -37,6 +37,29 @@ pub async fn get_game_list(category: GameCategory) -> anyhow::Result<Vec<GameInf
         .collect())
 }
 
+pub async fn get_game_replacement(
+    category: GameCategory,
+    for_which: &GameId,
+    excludes: &[GameId],
+) -> anyhow::Result<GameId> {
+    let mut url = format!(
+        "https://lichess.org/games/{}/replacement/{}?",
+        category.get_name(),
+        for_which.0,
+    );
+    for exclude in excludes {
+        url.push_str("exclude=");
+        url.push_str(&exclude.0);
+        url.push('&');
+    }
+
+    let resp = reqwest::get(url).await?;
+    let text = resp.text().await.unwrap();
+    // println!("{text}");
+    let resp: GameReplacement = serde_json::from_str(&text).unwrap();
+    Ok(resp.id)
+}
+
 #[derive(Deserialize, Debug)]
 pub struct GameInfo {
     pub id: GameId,
@@ -83,4 +106,10 @@ pub struct Clock {
     increment: i64,
     #[serde(rename = "totalTime")]
     total_time: u64,
+}
+
+#[derive(Deserialize, Debug)]
+struct GameReplacement {
+    id: GameId,
+    html: String,
 }
